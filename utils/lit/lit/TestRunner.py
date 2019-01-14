@@ -5,6 +5,7 @@ import functools
 import io
 import itertools
 import getopt
+import locale
 import os, signal, subprocess, sys
 import re
 import stat
@@ -344,8 +345,10 @@ def executeBuiltinMkdir(cmd, cmd_shenv):
     stderr = StringIO()
     exitCode = 0
     for dir in args:
+        dir = lit.util.convertToLocalEncoding(dir)
+        cwd = lit.util.convertToLocalEncoding(cmd_shenv.cwd)
         if not os.path.isabs(dir):
-            dir = os.path.realpath(os.path.join(cmd_shenv.cwd, dir))
+            dir = os.path.realpath(os.path.join(cwd, dir))
         if parent:
             lit.util.mkdir_p(dir)
         else:
@@ -598,8 +601,10 @@ def executeBuiltinRm(cmd, cmd_shenv):
     stderr = StringIO()
     exitCode = 0
     for path in args:
+        path = lit.util.convertToLocalEncoding(path)
+        cwd = lit.util.convertToLocalEncoding(cmd_shenv.cwd)
         if not os.path.isabs(path):
-            path = os.path.realpath(os.path.join(cmd_shenv.cwd, path))
+            path = os.path.realpath(os.path.join(cwd, path))
         if force and not os.path.exists(path):
             continue
         try:
@@ -695,7 +700,7 @@ def processRedirects(cmd, stdin_source, cmd_shenv, opened_files):
         else:
             # Make sure relative paths are relative to the cwd.
             redir_filename = os.path.join(cmd_shenv.cwd, name)
-            fd = open(redir_filename, mode)
+            fd = open(lit.util.convertToLocalEncoding(redir_filename), mode)
         # Workaround a Win32 and/or subprocess bug when appending.
         #
         # FIXME: Actually, this is probably an instance of PR6753.
@@ -1096,11 +1101,14 @@ def executeScript(test, litConfig, tmpBase, commands, cwd):
         for i, ln in enumerate(commands):
             commands[i] = re.sub(kPdbgRegex, ": '\\1'; ", ln)
         if test.config.pipefail:
-            f.write('set -o pipefail;')
+            f.write(b'set -o pipefail;' if mode == 'wb' else 'set -o pipefail;')
         if litConfig.echo_all_commands:
-            f.write('set -x;')
-        f.write('{ ' + '; } &&\n{ '.join(commands) + '; }')
-    f.write('\n')
+            f.write(b'set -x;' if mode == 'wb' else 'set -x;')
+        if sys.version_info > (3,0) and mode == 'wb':
+            f.write(bytes('{ ' + '; } &&\n{ '.join(commands) + '; }', 'utf-8'))
+        else:
+            f.write('{ ' + '; } &&\n{ '.join(commands) + '; }')
+    f.write(b'\n' if mode == 'wb' else '\n')
     f.close()
 
     if isWin32CMDEXE:
