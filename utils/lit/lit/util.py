@@ -444,3 +444,23 @@ def killProcessAndChildren(pid):
         psutilProc.kill()
     except psutil.NoSuchProcess:
         pass
+
+def convertToLocalEncoding(text):
+    """This function converts utf-8 text into a format which the local system prefers
+    to work with.
+    """
+    if platform.system() == 'Windows':
+        if sys.version_info < (3,0):
+            # On Windows and Python2, we want to use 'unicode' so it gets converted
+            # to UTF-16
+            return text.decode('utf-8') if isinstance(text, str) else test
+        else:
+            # On Windows and Python3, we want to use a unicode string so it gets
+            # converted to UTF-16
+            return text.decode('utf-8') if isinstance(text, bytes) else test
+
+    # On non Windows, we just want bytes so python don't try to
+    # convert it to ascii
+    return text if isinstance(text, bytes) else test.encode('utf-8')
+            
+

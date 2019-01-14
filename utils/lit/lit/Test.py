@@ -378,7 +378,7 @@ class Test:
         fil.write(testcase_xml)
         if self.result.code.isFailure:
             fil.write(">\n\t<failure ><![CDATA[")
-            if type(self.result.output) == unicode:
+            if not isinstance(self.result.output, str) and not isinstance(self.result.output, bytes):
                 encoded_output = self.result.output.encode("utf-8", 'ignore')
             else:
                 encoded_output = self.result.output
